@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "ClothingTryOn",
+    "slug": "clothing-tryon",
+    "version": "1.0.0",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "ios": {
+      "bundleIdentifier": "com.yourname.clothingtryon",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.yourname.clothingtryon"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b80ed5ec-227d-4ce7-b518-a2612d61b098"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b80ed5ec-227d-4ce7-b518-a2612d61b098"
+    }
+  }
+}
