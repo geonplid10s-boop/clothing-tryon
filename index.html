@@ -3,226 +3,358 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Clothing Try-On</title>
+    <title>Clothing Try-On 3D</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 10px; }
-        .header { background: #007AFF; color: white; padding: 20px; text-align: center; border-radius: 10px; margin-bottom: 20px; }
-        .section { background: white; padding: 20px; margin-bottom: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .btn { background: #007AFF; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; margin: 5px 0; }
-        .btn:hover { background: #0056CC; }
-        .preview { width: 100%; height: 400px; background: #e0e0e0; border-radius: 10px; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; }
-        .preview img { max-width: 100%; max-height: 100%; }
-        .garment-list { display: flex; overflow-x: auto; gap: 10px; padding: 10px 0; }
-        .garment-item { min-width: 120px; background: #f0f0f0; padding: 10px; border-radius: 8px; text-align: center; }
-        .status { color: #007AFF; margin: 10px 0; }
-        input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab { flex: 1; padding: 10px; background: white; border: 2px solid #007AFF; color: #007AFF; border-radius: 8px; cursor: pointer; text-align: center; }
-        .tab.active { background: #007AFF; color: white; }
-        .hidden { display: none; }
+        * { margin:0; padding:0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; overflow: hidden; }
+        #canvas-container { width: 100vw; height: 60vh; background: #e0e0e0; position: relative; }
+        #controls { padding: 10px; background: white; height: 40vh; overflow-y: auto; }
+        .header { background: #007AFF; color: white; padding: 15px; text-align: center; }
+        .btn { background: #007AFF; color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; margin: 5px 0; font-size: 14px; }
+        .btn-secondary { background: #34C759; }
+        .section { margin: 10px 0; padding: 10px; background: #f9f9f9; border-radius: 8px; }
+        input[type="file"] { margin: 10px 0; }
+        .garment-list { display: flex; overflow-x: auto; gap: 8px; padding: 10px 0; }
+        .garment-item { min-width: 80px; text-align: center; }
+        .garment-item img { width: 60px; height: 60px; object-fit: cover; border-radius: 5px; }
+        .status { color: #007AFF; font-size: 12px; margin: 5px 0; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>👔 Clothing Try-On</h1>
-            <p>Prueba ropa virtualmente</p>
+    <div class="header">
+        <h2>👔 Probador 3D</h2>
+        <p id="status-text">Cargando modelo 3D...</p>
+    </div>
+    
+    <div id="canvas-container"></div>
+    
+    <div id="controls">
+        <div class="section">
+            <button class="btn" onclick="document.getElementById('face-input').click()">📷 Poner mi cara</button>
+            <input type="file" id="face-input" accept="image/*" style="display:none" onchange="loadFace(event)">
+            <p class="status" id="face-status">No hay cara cargada</p>
         </div>
-
-        <div class="tabs">
-            <div class="tab active" onclick="showTab('tryon')">Probar</div>
-            <div class="tab" onclick="showTab('photos')">Fotos</div>
-            <div class="tab" onclick="showTab('garments')">Prendas</div>
-            <div class="tab" onclick="showTab('measurements')">Medidas</div>
+        
+        <div class="section">
+            <h4>Añadir prenda:</h4>
+            <input type="text" id="garment-name" placeholder="Nombre" style="width:100%;padding:8px;margin:3px 0;border:1px solid #ddd;border-radius:5px;">
+            <select id="garment-part" style="width:100%;padding:8px;margin:3px 0;border:1px solid #ddd;border-radius:5px;">
+                <option value="torso">Torso</option>
+                <option value="legs">Piernas</option>
+                <option value="feet">Pies</option>
+            </select>
+            <input type="file" id="garment-image" accept="image/*" style="display:none" onchange="addGarment(event)">
+            <button class="btn btn-secondary" onclick="document.getElementById('garment-image').click()">📁 Elegir imagen</button>
         </div>
-
-        <!-- Try-On Tab -->
-        <div id="tryon-tab" class="section">
-            <h2>Probador Virtual</h2>
-            <div class="preview" id="preview">
-                <p id="preview-text">👤 No hay foto</p>
-            </div>
+        
+        <div class="section">
+            <h4>Prendas seleccionadas:</h4>
             <div class="garment-list" id="garment-list"></div>
-            <div class="status" id="status"></div>
-        </div>
-
-        <!-- Photos Tab -->
-        <div id="photos-tab" class="section hidden">
-            <h2>Mi Foto</h2>
-            <input type="file" accept="image/*" id="photo-input" onchange="loadPhoto(event)">
-            <div class="preview" style="margin-top: 15px;">
-                <img id="user-photo" style="display:none;">
-            </div>
-            <p class="status" id="photo-status">No hay foto cargada</p>
-        </div>
-
-        <!-- Garments Tab -->
-        <div id="garments-tab" class="section hidden">
-            <h2>Armario</h2>
-            <input type="text" id="garment-name" placeholder="Nombre de la prenda">
-            <input type="text" id="garment-body" placeholder="Parte (torso/piernas/pies)">
-            <input type="file" accept="image/*" id="garment-image">
-            <button class="btn" onclick="addGarment()">Añadir Prenda</button>
-            <div class="garment-list" id="wardrobe-list"></div>
-        </div>
-
-        <!-- Measurements Tab -->
-        <div id="measurements-tab" class="section hidden">
-            <h2>Mis Medidas</h2>
-            <input type="number" id="height" placeholder="Altura (cm)" value="170">
-            <input type="number" id="weight" placeholder="Peso (kg)" value="70">
-            <input type="number" id="chest" placeholder="Pecho (cm)">
-            <input type="number" id="waist" placeholder="Cintura (cm)">
-            <button class="btn" onclick="saveMeasurements()">Guardar Medidas</button>
-            <p class="status" id="measurements-status"></p>
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        let userPhoto = localStorage.getItem('userPhoto');
+        let scene, camera, renderer, mannequin, faceMesh, garmentMeshes = [];
+        let faceTexture = null;
         let garments = JSON.parse(localStorage.getItem('garments') || '[]');
-        let measurements = JSON.parse(localStorage.getItem('measurements') || '{}');
         let selectedGarments = JSON.parse(localStorage.getItem('selectedGarments') || '{}');
 
-        // Load saved data
-        if (userPhoto) {
-            document.getElementById('user-photo').src = userPhoto;
-            document.getElementById('user-photo').style.display = 'block';
-            document.getElementById('photo-status').textContent = '✓ Foto cargada';
-            updatePreview();
+        // Initialize 3D scene
+        function init() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xe0e0e0);
+            
+            camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 1.5, 3);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+            
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            scene.add(directionalLight);
+            
+            // Create mannequin
+            createMannequin();
+            
+            // Load saved face
+            const savedFace = localStorage.getItem('userFace');
+            if (savedFace) {
+                loadFaceTexture(savedFace);
+                document.getElementById('face-status').textContent = '✓ Cara cargada';
+            }
+            
+            // Load saved garments
+            renderGarments();
+            updateGarmentsOnModel();
+            
+            // Mouse rotation
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+            
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - previousMousePosition.x;
+                if (mannequin) {
+                    mannequin.rotation.y += deltaX * 0.01;
+                }
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+            
+            renderer.domElement.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            // Touch rotation for mobile
+            renderer.domElement.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            });
+            
+            renderer.domElement.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                const deltaX = e.touches[0].clientX - previousMousePosition.x;
+                if (mannequin) {
+                    mannequin.rotation.y += deltaX * 0.01;
+                }
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            });
+            
+            renderer.domElement.addEventListener('touchend', () => {
+                isDragging = false;
+            });
+            
+            animate();
+            document.getElementById('status-text').textContent = 'Modelo 3D listo';
         }
-
-        if (Object.keys(measurements).length > 0) {
-            document.getElementById('height').value = measurements.height || 170;
-            document.getElementById('weight').value = measurements.weight || 70;
-            document.getElementById('chest').value = measurements.chest || '';
-            document.getElementById('waist').value = measurements.waist || '';
-            document.getElementById('measurements-status').textContent = '✓ Medidas guardadas';
+        
+        function createMannequin() {
+            mannequin = new THREE.Group();
+            
+            // Head (sphere)
+            const headGeometry = new THREE.SphereGeometry(0.25, 32, 32);
+            const headMaterial = new THREE.MeshLambertMaterial({ color: 0xffdbac });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 1.6;
+            head.name = 'head';
+            mannequin.add(head);
+            
+            // Create face mesh (for texture)
+            const faceGeometry = new THREE.SphereGeometry(0.26, 32, 32);
+            const faceMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
+            faceMesh = new THREE.Mesh(faceGeometry, faceMaterial);
+            faceMesh.position.y = 1.6;
+            faceMesh.name = 'face';
+            mannequin.add(faceMesh);
+            
+            // Torso (cylinder)
+            const torsoGeometry = new THREE.CylinderGeometry(0.3, 0.35, 0.8, 32);
+            const torsoMaterial = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+            const torso = new THREE.Mesh(torsoGeometry, torsoMaterial);
+            torso.position.y = 0.9;
+            torso.name = 'torso';
+            mannequin.add(torso);
+            
+            // Legs (two cylinders)
+            const legGeometry = new THREE.CylinderGeometry(0.12, 0.12, 0.9, 16);
+            const legMaterial = new THREE.MeshLambertMaterial({ color: 0x666666 });
+            
+            const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+            leftLeg.position.set(-0.1, 0.25, 0);
+            mannequin.add(leftLeg);
+            
+            const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+            rightLeg.position.set(0.1, 0.25, 0);
+            mannequin.add(rightLeg);
+            
+            // Feet (boxes)
+            const footGeometry = new THREE.BoxGeometry(0.15, 0.08, 0.25);
+            const footMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+            
+            const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+            leftFoot.position.set(-0.1, -0.15, 0.05);
+            mannequin.add(leftFoot);
+            
+            const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
+            rightFoot.position.set(0.1, -0.15, 0.05);
+            mannequin.add(rightFoot);
+            
+            scene.add(mannequin);
         }
-
-        renderWardrobe();
-        renderSelectedGarments();
-
-        function showTab(tab) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('[id$="-tab"]').forEach(t => t.classList.add('hidden'));
-            document.getElementById(tab + '-tab').classList.remove('hidden');
-            event.target.classList.add('active');
-        }
-
-        function loadPhoto(event) {
+        
+        function loadFace(event) {
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    userPhoto = e.target.result;
-                    localStorage.setItem('userPhoto', userPhoto);
-                    document.getElementById('user-photo').src = userPhoto;
-                    document.getElementById('user-photo').style.display = 'block';
-                    document.getElementById('photo-status').textContent = '✓ Foto cargada';
-                    updatePreview();
+                    localStorage.setItem('userFace', e.target.result);
+                    loadFaceTexture(e.target.result);
+                    document.getElementById('face-status').textContent = '✓ Cara cargada';
                 }
                 reader.readAsDataURL(file);
             }
         }
-
-        function addGarment() {
+        
+        function loadFaceTexture(dataUrl) {
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(dataUrl, (texture) => {
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.center.set(0.5, 0.5);
+                faceMesh.material = new THREE.MeshBasicMaterial({ 
+                    map: texture, 
+                    transparent: true, 
+                    opacity: 1 
+                });
+                faceTexture = texture;
+            });
+        }
+        
+        function addGarment(event) {
+            const file = event.target.files[0];
             const name = document.getElementById('garment-name').value;
-            const bodyPart = document.getElementById('garment-body').value;
-            const fileInput = document.getElementById('garment-image');
+            const bodyPart = document.getElementById('garment-part').value;
             
-            if (!name || !bodyPart || !fileInput.files[0]) {
-                alert('Completa todos los campos');
+            if (!file || !name) {
+                alert('Completa el nombre y elige una imagen');
                 return;
             }
-
+            
             const reader = new FileReader();
             reader.onload = function(e) {
                 const garment = {
                     id: Date.now(),
                     name: name,
                     bodyPart: bodyPart,
-                    imageUri: e.target.result
+                    image: e.target.result
                 };
                 garments.push(garment);
                 localStorage.setItem('garments', JSON.stringify(garments));
-                renderWardrobe();
-                
-                // Clear inputs
-                document.getElementById('garment-name').value = '';
-                document.getElementById('garment-body').value = '';
-                fileInput.value = '';
+                renderGarments();
             }
-            reader.readAsDataURL(fileInput.files[0]);
+            reader.readAsDataURL(file);
         }
-
-        function renderWardrobe() {
-            const list = document.getElementById('wardrobe-list');
-            list.innerHTML = '';
-            garments.forEach(g => {
-                const div = document.createElement('div');
-                div.className = 'garment-item';
-                div.innerHTML = `
-                    <img src="${g.imageUri}" style="width:80px;height:80px;object-fit:cover;border-radius:5px;"><br>
-                    <small>${g.name}</small><br>
-                    <button onclick="selectGarment(${g.id})" style="background:#007AFF;color:white;border:none;padding:5px 10px;border-radius:5px;margin-top:5px;">Probar</button>
-                `;
-                list.appendChild(div);
-            });
-        }
-
+        
         function selectGarment(id) {
             const garment = garments.find(g => g.id === id);
             if (garment) {
                 selectedGarments[garment.bodyPart] = garment;
                 localStorage.setItem('selectedGarments', JSON.stringify(selectedGarments));
-                renderSelectedGarments();
-                updatePreview();
+                updateGarmentsOnModel();
+                renderGarments();
             }
         }
-
-        function renderSelectedGarments() {
+        
+        function removeGarment(bodyPart) {
+            delete selectedGarments[bodyPart];
+            localStorage.setItem('selectedGarments', JSON.stringify(selectedGarments));
+            updateGarmentsOnModel();
+            renderGarments();
+        }
+        
+        function updateGarmentsOnModel() {
+            // Remove old garment meshes
+            garmentMeshes.forEach(mesh => mannequin.remove(mesh));
+            garmentMeshes = [];
+            
+            // Add new garments
+            Object.values(selectedGarments).forEach(garment => {
+                const textureLoader = new THREE.TextureLoader();
+                textureLoader.load(garment.image, (texture) => {
+                    const garmentMaterial = new THREE.MeshBasicMaterial({ 
+                        map: texture, 
+                        transparent: true, 
+                        opacity: 0.9,
+                        side: THREE.DoubleSide
+                    });
+                    
+                    let garmentMesh;
+                    if (garment.bodyPart === 'torso') {
+                        const geometry = new THREE.CylinderGeometry(0.32, 0.37, 0.8, 32);
+                        garmentMesh = new THREE.Mesh(geometry, garmentMaterial);
+                        garmentMesh.position.y = 0.9;
+                    } else if (garment.bodyPart === 'legs') {
+                        const geometry = new THREE.CylinderGeometry(0.15, 0.15, 0.9, 16);
+                        garmentMesh = new THREE.Mesh(geometry, garmentMaterial);
+                        garmentMesh.position.y = 0.25;
+                    } else if (garment.bodyPart === 'feet') {
+                        const geometry = new THREE.BoxGeometry(0.2, 0.1, 0.3);
+                        garmentMesh = new THREE.Mesh(geometry, garmentMaterial);
+                        garmentMesh.position.y = -0.15;
+                    }
+                    
+                    if (garmentMesh) {
+                        mannequin.add(garmentMesh);
+                        garmentMeshes.push(garmentMesh);
+                    }
+                });
+            });
+        }
+        
+        function renderGarments() {
             const list = document.getElementById('garment-list');
             list.innerHTML = '';
+            
             Object.values(selectedGarments).forEach(g => {
                 const div = document.createElement('div');
                 div.className = 'garment-item';
-                div.innerHTML = `<small>${g.bodyPart}: ${g.name}</small>`;
+                div.innerHTML = `
+                    <img src="${g.image}"><br>
+                    <small>${g.name}</small><br>
+                    <button onclick="removeGarment('${g.bodyPart}')" style="background:#FF3B30;color:white;border:none;padding:3px 8px;border-radius:3px;font-size:10px;">Quitar</button>
+                `;
                 list.appendChild(div);
             });
+            
+            // Also show available garments
+            garments.forEach(g => {
+                if (!selectedGarments[g.bodyPart] || selectedGarments[g.bodyPart].id !== g.id) {
+                    const div = document.createElement('div');
+                    div.className = 'garment-item';
+                    div.innerHTML = `
+                        <img src="${g.image}"><br>
+                        <small>${g.name}</small><br>
+                        <button onclick="selectGarment(${g.id})" style="background:#007AFF;color:white;border:none;padding:3px 8px;border-radius:3px;font-size:10px;">Probar</button>
+                    `;
+                    list.appendChild(div);
+                }
+            });
         }
-
-        function updatePreview() {
-            const preview = document.getElementById('preview');
-            if (userPhoto) {
-                preview.innerHTML = `<img src="${userPhoto}" style="width:100%;height:100%;object-fit:contain;">`;
-                
-                // Add garment overlays
-                Object.values(selectedGarments).forEach(g => {
-                    const img = document.createElement('img');
-                    img.src = g.imageUri;
-                    img.style.cssText = 'position:absolute;width:60%;opacity:0.8;';
-                    if (g.bodyPart === 'torso') img.style.top = '25%';
-                    if (g.bodyPart === 'piernas') img.style.top = '50%';
-                    if (g.bodyPart === 'pies') img.style.top = '75%';
-                    preview.appendChild(img);
-                });
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Gentle rotation animation
+            if (mannequin && !isDragging) {
+                mannequin.rotation.y += 0.005;
             }
+            
+            renderer.render(scene, camera);
         }
-
-        function saveMeasurements() {
-            measurements = {
-                height: document.getElementById('height').value,
-                weight: document.getElementById('weight').value,
-                chest: document.getElementById('chest').value,
-                waist: document.getElementById('waist').value
-            };
-            localStorage.setItem('measurements', JSON.stringify(measurements));
-            document.getElementById('measurements-status').textContent = '✓ Medidas guardadas';
-            updatePreview();
-        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+        
+        // Initialize when page loads
+        window.onload = init;
     </script>
 </body>
 </html>
